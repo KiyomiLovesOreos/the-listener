@@ -1,3 +1,5 @@
+# VERY BUGGY AS OF NOW
+
 # The Listener
 
 A cosmic horror survival game inspired by *Voices of the Void*. You are a lone operator in a remote observatory, processing deep space signals while navigating the physical station in a stunning ASCII terminal interface.
