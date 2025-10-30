@@ -6,6 +6,7 @@ import os
 import sys
 import random
 import time
+import shutil
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 from enum import Enum
@@ -79,19 +80,29 @@ class Resources:
 
 class Station:
     def __init__(self):
-        # Simple station layout (10x10 grid)
+        # Larger station layout (20x20 grid)
         # 0 = floor, 1 = wall, 2 = door, 3 = terminal, 4 = generator, 5 = storage
         self.layout = [
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-            [1, 0, 3, 0, 2, 0, 0, 4, 0, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-            [1, 1, 2, 1, 1, 1, 1, 2, 1, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 5, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 3, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 4, 0, 0, 1],
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 5, 5, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         ]
         self.tiles = {
             0: ".",
@@ -124,18 +135,33 @@ class Game:
         self.running = True
         self.discovered_signals = 0
         self.glitch_chars = ['░', '▒', '▓', '█', '▄', '▀', '■', '□', '▪', '▫', '§', '¶', '†', '‡', '∴', '∵', '◊', '○', '●', '◘', '◙']
+        self.corruption_chars = ['§', 'µ', '¿', '¶', '†', '‡', '∞', '≈', '∴', '∵', '◊']
+        self.zalgo_marks = ['̃', '̀', '́', '̂', '̄', '̆', '̇', '̈', '̊', '̋', '̌', '̐', '̒']
+        self.light_flicker_frame = 0
+        self.terminal_history = []
+        self.max_history = 100
         
     def clear_screen(self):
+        """Clear screen - now just used for special effects"""
         os.system('clear' if os.name != 'nt' else 'cls')
+    
+    def get_terminal_size(self):
+        """Get terminal dimensions"""
+        size = shutil.get_terminal_size((80, 24))
+        return size.columns, size.lines
 
     def print_separator(self, char="═"):
-        print(Colors.GRAY + char * 70 + Colors.END)
+        cols, _ = self.get_terminal_size()
+        width = min(cols, 100)
+        print(Colors.GRAY + char * width + Colors.END)
 
     def print_box_header(self, text: str):
-        padding = (68 - len(text)) // 2
-        print(Colors.CYAN + "╔" + "═" * 68 + "╗" + Colors.END)
-        print(Colors.CYAN + "║" + " " * padding + Colors.BOLD + text + Colors.END + Colors.CYAN + " " * (68 - padding - len(text)) + "║" + Colors.END)
-        print(Colors.CYAN + "╚" + "═" * 68 + "╝" + Colors.END)
+        cols, _ = self.get_terminal_size()
+        width = min(cols - 4, 96)
+        padding = (width - len(text)) // 2
+        print(Colors.CYAN + "╔" + "═" * width + "╗" + Colors.END)
+        print(Colors.CYAN + "║" + " " * padding + Colors.BOLD + text + Colors.END + Colors.CYAN + " " * (width - padding - len(text)) + "║" + Colors.END)
+        print(Colors.CYAN + "╚" + "═" * width + "╝" + Colors.END)
 
     def glitch_text(self, text: str) -> str:
         """Apply glitch effects to text based on sanity"""
@@ -490,73 +516,453 @@ class Game:
         print(f"\n{Colors.BLUE}Current Day:{Colors.END} {Colors.YELLOW}{self.day}{Colors.END}")
 
     def explore_command(self):
+        # Check if player is at a terminal
+        current_tile = self.station.get_tile(self.player.x, self.player.y)
+        if current_tile != 3:
+            print(f"\n{Colors.RED}You must be at a Terminal (T) to access the command interface.{Colors.END}")
+            print(f"{Colors.DIM}Use 'explore' to navigate the station, or 'map' to see terminal locations.{Colors.END}")
+            return
+        
         print(f"\n{Colors.CYAN}[ENTERING EXPLORATION MODE]{Colors.END}")
         print(f"{Colors.DIM}Use WASD to move, Q to return to terminal{Colors.END}")
         time.sleep(1)
         self.player.current_mode = GameMode.EXPLORATION
         self.render_exploration()
 
+    def apply_corruption(self, char: str) -> str:
+        """Apply corruption effects to characters based on sanity"""
+        if self.player.sanity >= 70:
+            return char
+        
+        corruption_chance = (100 - self.player.sanity) / 400
+        
+        if random.random() < corruption_chance:
+            corrupted = random.choice(self.corruption_chars)
+            # Add zalgo marks for severe corruption
+            if self.player.sanity < 30 and random.random() < 0.3:
+                corrupted += random.choice(self.zalgo_marks)
+            return Colors.RED + corrupted + Colors.END
+        
+        return char
+    
     def render_exploration(self):
-        # Calculate view based on player direction
-        view_distance = 5
+        """Render full-screen ASCII FPS-style exploration view with true 3D perspective"""
+        cols, lines = self.get_terminal_size()
+        view_distance = 8
         dx, dy = self.get_direction_vector()
         
         self.clear_screen()
-        self.print_box_header("EXPLORATION MODE")
         
-        print(f"\n{Colors.BLUE}Position:{Colors.END} {Colors.CYAN}({self.player.x}, {self.player.y}){Colors.END} │ "
-              f"{Colors.BLUE}Facing:{Colors.END} {Colors.YELLOW}{self.player.direction.name}{Colors.END}")
-        self.print_separator()
+        # Light flicker simulation
+        self.light_flicker_frame = (self.light_flicker_frame + 1) % 10
+        is_light_on = self.light_flicker_frame < 7 or self.player.sanity > 60
+        light_intensity = 1.0 if is_light_on else 0.3
         
-        # Render first-person view with color
-        print("\n")
-        for dist in range(view_distance, 0, -1):
+        # Calculate available space for rendering
+        view_lines = lines - 4
+        
+        # Split screen into ceiling, walls, and floor
+        ceiling_lines = view_lines // 3
+        wall_lines = view_lines // 3
+        floor_lines = view_lines - ceiling_lines - wall_lines
+        
+        output_lines = []
+        
+        # RENDER CEILING (looking up perspective)
+        for i in range(ceiling_lines):
+            line_chars = []
+            
+            # Ceiling gets darker towards edges
+            depth = i / ceiling_lines
+            
+            if depth < 0.3:
+                # Near ceiling - show details
+                for x in range(cols):
+                    edge_dist = min(x, cols - x) / cols
+                    if random.random() < 0.02 and edge_dist > 0.1:
+                        line_chars.append(Colors.DIM + random.choice(['-', '|', '·', '.']) + Colors.END)
+                    else:
+                        line_chars.append(Colors.DIM + '.' + Colors.END)
+            else:
+                # Farther ceiling
+                for x in range(cols):
+                    if random.random() < 0.005:
+                        line_chars.append(Colors.DIM + '.' + Colors.END)
+                    else:
+                        line_chars.append(' ')
+            
+            # Add corruption at edges for low sanity
+            if self.player.sanity < 50 and random.random() < 0.05:
+                if len(line_chars) > 0:
+                    line_chars[0] = Colors.RED + random.choice(self.corruption_chars) + Colors.END
+                if len(line_chars) > 1:
+                    line_chars[-1] = Colors.RED + random.choice(self.corruption_chars) + Colors.END
+            
+            output_lines.append(''.join(line_chars))
+        
+        # RENDER WALLS (main 3D perspective view)
+        for i in range(wall_lines):
+            # Calculate which distance slice we're looking at
+            # Middle of screen = closest, edges = farthest
+            view_progress = i / wall_lines
+            dist = int(view_distance * (1 - view_progress)) + 1
+            
+            if dist > view_distance:
+                dist = view_distance
+            
             look_x = self.player.x + dx * dist
             look_y = self.player.y + dy * dist
             
-            tile = self.station.get_tile(look_x, look_y)
-            tile_char = self.station.tiles.get(tile, "#")
+            # Check surrounding tiles
+            perp_dx, perp_dy = -dy, dx
+            left_tile = self.station.get_tile(look_x + perp_dx, look_y + perp_dy)
+            right_tile = self.station.get_tile(look_x - perp_dx, look_y - perp_dy)
+            center_tile = self.station.get_tile(look_x, look_y)
             
-            # Create perspective effect
-            width = (view_distance - dist + 1) * 2
-            padding = " " * ((view_distance * 2) - width)
+            # Perspective calculation - narrower at far distances
+            perspective_factor = (view_distance - dist + 1) / (view_distance + 1)
+            wall_width = max(8, int(cols * 0.15 * perspective_factor))
+            center_gap = cols - (2 * wall_width)
             
-            # Color based on tile type and sanity
-            if tile == 1:  # Wall
-                wall_color = Colors.GRAY if self.player.sanity > 50 else Colors.glitch()
-                display = wall_color + tile_char * width + Colors.END
+            if center_gap < 10:
+                center_gap = 10
+                wall_width = (cols - center_gap) // 2
+            
+            # Distance-based lighting
+            distance_fade = 1.0 - (dist / view_distance)
+            brightness = distance_fade * light_intensity
+            
+            line_chars = []
+            
+            # LEFT WALL - rendered with depth
+            if left_tile == 1:
+                for w in range(wall_width):
+                    # Create depth gradient from edge to center
+                    depth_factor = w / wall_width
+                    
+                    if brightness > 0.7:
+                        if depth_factor < 0.3:
+                            wall_char = '█'
+                        elif depth_factor < 0.6:
+                            wall_char = '▓'
+                        else:
+                            wall_char = '▒'
+                    elif brightness > 0.4:
+                        if depth_factor < 0.5:
+                            wall_char = '▓'
+                        else:
+                            wall_char = '▒'
+                    elif brightness > 0.2:
+                        wall_char = '▒'
+                    else:
+                        wall_char = '░'
+                    
+                    # Add structural details
+                    if random.random() < 0.08 and depth_factor > 0.4:
+                        wall_char = random.choice(['|', ':', '║'])
+                    
+                    wall_color = Colors.GREEN if self.player.sanity > 50 else Colors.glitch()
+                    line_chars.append(self.apply_corruption(wall_color + wall_char + Colors.END))
             else:
-                display = " " * width
+                # Empty space - show darkness gradient
+                for w in range(wall_width):
+                    depth_factor = w / wall_width
+                    if depth_factor > 0.7 and random.random() < 0.02:
+                        line_chars.append(Colors.DIM + '░' + Colors.END)
+                    else:
+                        line_chars.append(' ')
             
-            # Add glitch at low sanity
-            if self.player.sanity < 30 and random.random() < 0.1:
-                display = Colors.RED + random.choice(self.glitch_chars) * width + Colors.END
+            # CENTER - what's ahead
+            center_chars = []
             
-            print(padding + display)
+            if center_tile == 1:  # Wall ahead - render with texture
+                wall_color = Colors.GREEN if self.player.sanity > 50 else Colors.glitch()
+                
+                for c in range(center_gap):
+                    # Create texture based on position
+                    horizontal_pos = c / center_gap
+                    
+                    # Add depth and texture
+                    if brightness > 0.8:
+                        # Close wall - high detail
+                        if (c + i) % 4 == 0:
+                            fill_char = '#'
+                        elif random.random() < 0.15:
+                            fill_char = random.choice(['#', '▓', '|', '-'])
+                        else:
+                            fill_char = '█'
+                    elif brightness > 0.5:
+                        fill_char = '▓' if random.random() < 0.7 else '#'
+                    elif brightness > 0.3:
+                        fill_char = '▒'
+                    else:
+                        fill_char = '░'
+                    
+                    center_chars.append(self.apply_corruption(wall_color + fill_char + Colors.END))
+                    
+            elif center_tile == 2:  # Door - render with perspective
+                door_width = int(center_gap * perspective_factor * 0.5)
+                door_width = max(4, min(door_width, center_gap - 4))
+                side_space = (center_gap - door_width) // 2
+                
+                # Left wall section
+                wall_color = Colors.GREEN if self.player.sanity > 50 else Colors.glitch()
+                for _ in range(side_space):
+                    center_chars.append(wall_color + '#' + Colors.END)
+                
+                # Door itself
+                if dist <= 2:
+                    # Close door - show detail
+                    center_chars.append(Colors.CYAN + Colors.BOLD + '╔' + Colors.END)
+                    for d in range(door_width - 2):
+                        if d == door_width // 2:
+                            center_chars.append(Colors.CYAN + '█' + Colors.END)  # Handle
+                        else:
+                            center_chars.append(Colors.CYAN + '║' + Colors.END)
+                    center_chars.append(Colors.CYAN + Colors.BOLD + '╗' + Colors.END)
+                elif dist <= 4:
+                    # Medium distance
+                    for _ in range(door_width):
+                        center_chars.append(Colors.CYAN + '▓' + Colors.END)
+                else:
+                    # Far door
+                    for _ in range(door_width):
+                        center_chars.append(Colors.CYAN + '▒' + Colors.END)
+                
+                # Right wall section
+                for _ in range(center_gap - side_space - door_width):
+                    center_chars.append(wall_color + '#' + Colors.END)
+                    
+            elif center_tile == 3:  # Terminal
+                if dist <= 4:
+                    term_width = int(center_gap * perspective_factor * 0.4)
+                    term_width = max(6, min(term_width, center_gap - 4))
+                    side_space = (center_gap - term_width) // 2
+                    
+                    for _ in range(side_space):
+                        center_chars.append(' ')
+                    
+                    # Terminal display
+                    if dist <= 2:
+                        center_chars.append(Colors.GREEN + Colors.BOLD + '[' + Colors.END)
+                        for t in range(term_width - 2):
+                            if t % 3 == 0:
+                                center_chars.append(Colors.GREEN + Colors.BOLD + 'T' + Colors.END)
+                            else:
+                                center_chars.append(Colors.GREEN + '▓' + Colors.END)
+                        center_chars.append(Colors.GREEN + Colors.BOLD + ']' + Colors.END)
+                    else:
+                        for _ in range(term_width):
+                            center_chars.append(Colors.GREEN + '▓' + Colors.END)
+                    
+                    for _ in range(center_gap - side_space - term_width):
+                        center_chars.append(' ')
+                else:
+                    for _ in range(center_gap):
+                        center_chars.append(Colors.GREEN + '░' + Colors.END)
+                        
+            elif center_tile == 4:  # Generator - with glowing effect
+                if dist <= 4:
+                    gen_width = int(center_gap * perspective_factor * 0.5)
+                    gen_width = max(8, min(gen_width, center_gap - 4))
+                    side_space = (center_gap - gen_width) // 2
+                    
+                    for _ in range(side_space):
+                        center_chars.append(' ')
+                    
+                    # Generator core
+                    if dist <= 2:
+                        center_chars.append(Colors.RED + Colors.BOLD + '◄' + Colors.END)
+                        for g in range(gen_width - 2):
+                            if random.random() < 0.4:
+                                glow = random.choice(['█', '▓', '▒'])
+                            else:
+                                glow = '▓'
+                            center_chars.append(Colors.RED + glow + Colors.END)
+                        center_chars.append(Colors.RED + Colors.BOLD + '►' + Colors.END)
+                    else:
+                        for _ in range(gen_width):
+                            center_chars.append(Colors.RED + '▓' + Colors.END)
+                    
+                    for _ in range(center_gap - side_space - gen_width):
+                        center_chars.append(' ')
+                else:
+                    for _ in range(center_gap):
+                        center_chars.append(Colors.RED + '░' + Colors.END)
+                        
+            elif center_tile == 5:  # Storage
+                if dist <= 4:
+                    stor_width = int(center_gap * perspective_factor * 0.4)
+                    stor_width = max(6, min(stor_width, center_gap - 4))
+                    side_space = (center_gap - stor_width) // 2
+                    
+                    for _ in range(side_space):
+                        center_chars.append(' ')
+                    
+                    for _ in range(stor_width):
+                        center_chars.append(Colors.MAGENTA + random.choice(['▓', '▒', '█']) + Colors.END)
+                    
+                    for _ in range(center_gap - side_space - stor_width):
+                        center_chars.append(' ')
+                else:
+                    for _ in range(center_gap):
+                        center_chars.append(Colors.MAGENTA + '░' + Colors.END)
+            else:
+                # Empty corridor
+                for _ in range(center_gap):
+                    center_chars.append(' ')
+            
+            line_chars.extend(center_chars)
+            
+            # RIGHT WALL - mirror of left with depth
+            if right_tile == 1:
+                for w in range(wall_width):
+                    # Create depth gradient from center to edge
+                    depth_factor = (wall_width - w) / wall_width
+                    
+                    if brightness > 0.7:
+                        if depth_factor < 0.3:
+                            wall_char = '█'
+                        elif depth_factor < 0.6:
+                            wall_char = '▓'
+                        else:
+                            wall_char = '▒'
+                    elif brightness > 0.4:
+                        if depth_factor < 0.5:
+                            wall_char = '▓'
+                        else:
+                            wall_char = '▒'
+                    elif brightness > 0.2:
+                        wall_char = '▒'
+                    else:
+                        wall_char = '░'
+                    
+                    # Add structural details
+                    if random.random() < 0.08 and depth_factor > 0.4:
+                        wall_char = random.choice(['|', ':', '║'])
+                    
+                    wall_color = Colors.GREEN if self.player.sanity > 50 else Colors.glitch()
+                    line_chars.append(self.apply_corruption(wall_color + wall_char + Colors.END))
+            else:
+                # Empty space - darkness gradient
+                for w in range(wall_width):
+                    depth_factor = (wall_width - w) / wall_width
+                    if depth_factor > 0.7 and random.random() < 0.02:
+                        line_chars.append(Colors.DIM + '░' + Colors.END)
+                    else:
+                        line_chars.append(' ')
+            
+            # Add screen edge corruption at low sanity
+            if self.player.sanity < 50:
+                if len(line_chars) > 0 and random.random() < 0.1:
+                    line_chars[0] = Colors.RED + random.choice(self.corruption_chars) + Colors.END
+                if len(line_chars) > 1 and random.random() < 0.1:
+                    line_chars[-1] = Colors.RED + random.choice(self.corruption_chars) + Colors.END
+            
+            output_lines.append(''.join(line_chars[:cols]))
         
-        print(f"\n{Colors.CYAN}{'═' * 20}{Colors.END}")
-        print(f"{Colors.BOLD}{Colors.YELLOW}    [  YOU  ]{Colors.END}")
-        print(f"{Colors.CYAN}{'═' * 20}{Colors.END}")
+        # RENDER FLOOR (looking down perspective)
+        for i in range(floor_lines):
+            line_chars = []
+            
+            # Floor gets closer to center as we go down
+            depth = i / floor_lines
+            floor_width = int(cols * (0.3 + depth * 0.4))
+            side_margin = (cols - floor_width) // 2
+            
+            # Left darkness
+            for _ in range(side_margin):
+                if random.random() < 0.01:
+                    line_chars.append(Colors.DIM + '░' + Colors.END)
+                else:
+                    line_chars.append(' ')
+            
+            # Floor tiles
+            for f in range(floor_width):
+                horizontal_pos = f / floor_width
+                
+                if depth > 0.7:
+                    # Close floor
+                    if (f + i) % 5 == 0:
+                        line_chars.append(Colors.DIM + ',' + Colors.END)
+                    elif random.random() < 0.05:
+                        line_chars.append(Colors.DIM + '.' + Colors.END)
+                    else:
+                        line_chars.append(Colors.DIM + ' ' + Colors.END)
+                elif depth > 0.4:
+                    # Medium floor
+                    if random.random() < 0.03:
+                        line_chars.append(Colors.DIM + '.' + Colors.END)
+                    else:
+                        line_chars.append(' ')
+                else:
+                    # Far floor
+                    if random.random() < 0.01:
+                        line_chars.append(Colors.DIM + '·' + Colors.END)
+                    else:
+                        line_chars.append(' ')
+            
+            # Right darkness
+            for _ in range(cols - side_margin - floor_width):
+                if random.random() < 0.01:
+                    line_chars.append(Colors.DIM + '░' + Colors.END)
+                else:
+                    line_chars.append(' ')
+            
+            # Corruption at edges
+            if self.player.sanity < 50 and random.random() < 0.05:
+                if len(line_chars) > 0:
+                    line_chars[0] = Colors.RED + random.choice(self.corruption_chars) + Colors.END
+                if len(line_chars) > 1:
+                    line_chars[-1] = Colors.RED + random.choice(self.corruption_chars) + Colors.END
+            
+            output_lines.append(''.join(line_chars))
         
-        # Show what's at current location
+        # Print all lines
+        for line in output_lines:
+            print(line)
+        
+        # Status bar with retro terminal aesthetic
+        print(Colors.GREEN + "─" * cols + Colors.END)
+        
         current_tile = self.station.get_tile(self.player.x, self.player.y)
-        if current_tile == 3:
-            print(f"\n{Colors.GREEN}> You are at the TERMINAL. Press Q to use it.{Colors.END}")
-        elif current_tile == 4:
-            print(f"\n{Colors.YELLOW}> You are at the GENERATOR.{Colors.END}")
-        elif current_tile == 5:
-            print(f"\n{Colors.CYAN}> You are at STORAGE.{Colors.END}")
+        location_text = ""
+        location_hint = ""
         
-        # Random creepy messages at low sanity
-        if self.player.sanity < 40 and random.random() < 0.15:
+        if current_tile == 3:
+            location_text = f"{Colors.GREEN}{Colors.BOLD}[TERMINAL]{Colors.END}"
+            location_hint = f"{Colors.GREEN}Press Q to access terminal interface{Colors.END}"
+        elif current_tile == 4:
+            location_text = f"{Colors.RED}{Colors.BOLD}[GENERATOR]{Colors.END}"
+            location_hint = f"{Colors.YELLOW}Power hums through the machinery{Colors.END}"
+        elif current_tile == 5:
+            location_text = f"{Colors.MAGENTA}{Colors.BOLD}[STORAGE]{Colors.END}"
+            location_hint = f"{Colors.CYAN}Supplies stored here{Colors.END}"
+        else:
+            location_text = f"{Colors.WHITE}[CORRIDOR]{Colors.END}"
+            location_hint = ""
+        
+        status = f"{Colors.GREEN}> {location_text} {Colors.DIM}│{Colors.END} "
+        status += f"{Colors.GREEN}POS:{Colors.END}{self.player.x:02d},{self.player.y:02d} {Colors.DIM}│{Colors.END} "
+        status += f"{Colors.GREEN}DIR:{Colors.END}{self.player.direction.name[0]} {Colors.DIM}│{Colors.END} "
+        status += f"{Colors.GREEN}O2:{Colors.END}{self.resources.oxygen}%"
+        
+        print(status)
+        
+        if location_hint:
+            print(location_hint)
+        
+        # Sanity effects
+        if self.player.sanity < 40 and random.random() < 0.2:
             messages = [
-                f"{Colors.GRAY}...something moved in the shadows...{Colors.END}",
-                f"{Colors.GRAY}...the walls feel closer than before...{Colors.END}",
-                f"{Colors.GRAY}...did you hear that?...{Colors.END}"
+                f"{Colors.RED}...{random.choice(self.corruption_chars)}...something moved...{Colors.END}",
+                f"{Colors.RED}...the walls breathe...{Colors.END}",
+                f"{Colors.RED}...{random.choice(self.corruption_chars)}...you hear whispers...{Colors.END}",
+                f"{Colors.RED}...you are not alone...{random.choice(self.corruption_chars)}{Colors.END}"
             ]
             print(f"\n{random.choice(messages)}")
         
-        print(f"\n{Colors.DIM}Controls: W=Forward, S=Backward, A=Turn Left, D=Turn Right, Q=Exit{Colors.END}")
+        print(f"\n{Colors.DIM}[W]FWD [S]BACK [A]LEFT [D]RIGHT [M]MAP [Q]TERM{Colors.END}")
 
     def get_direction_vector(self) -> Tuple[int, int]:
         vectors = {
@@ -602,7 +1008,7 @@ class Game:
         while self.player.current_mode == GameMode.EXPLORATION:
             self.render_exploration()
             
-            cmd = input("\n> ").strip().lower()
+            cmd = input(f"\n{Colors.CYAN}>{Colors.END} ").strip().lower()
             
             if cmd == 'w':
                 self.move_player(forward=True)
@@ -612,17 +1018,26 @@ class Game:
                 self.turn_player(clockwise=False)
             elif cmd == 'd':
                 self.turn_player(clockwise=True)
+            elif cmd == 'm':
+                self.map_command()
+                input(f"\n{Colors.DIM}Press Enter to continue...{Colors.END}")
             elif cmd == 'q':
-                self.player.current_mode = GameMode.TERMINAL
-                print(f"\n{Colors.CYAN}[RETURNING TO TERMINAL MODE]{Colors.END}")
-                time.sleep(1)
-                return
+                # Check if at terminal
+                current_tile = self.station.get_tile(self.player.x, self.player.y)
+                if current_tile == 3:
+                    self.player.current_mode = GameMode.TERMINAL
+                    print(f"\n{Colors.GREEN}[ACCESSING TERMINAL INTERFACE]{Colors.END}")
+                    time.sleep(0.8)
+                    return
+                else:
+                    print(f"\n{Colors.RED}> No terminal access from this location. Find a Terminal (T) first.{Colors.END}")
+                    time.sleep(1)
             elif cmd == 'help':
-                print(f"\n{Colors.YELLOW}W=Forward, S=Backward, A=Turn Left, D=Turn Right, Q=Exit{Colors.END}")
+                print(f"\n{Colors.YELLOW}W=Forward, S=Backward, A=Turn Left, D=Turn Right, M=Map, Q=Terminal{Colors.END}")
                 input(f"\n{Colors.DIM}Press Enter to continue...{Colors.END}")
             else:
-                print(f"\n{Colors.RED}> Invalid command. Type 'help' for controls.{Colors.END}")
-                time.sleep(1)
+                print(f"\n{Colors.RED}> Invalid command. Use 'help' for controls.{Colors.END}")
+                time.sleep(0.5)
 
     def help_command(self):
         self.print_box_header("AVAILABLE COMMANDS")
@@ -633,13 +1048,124 @@ class Game:
         print(f"  {Colors.YELLOW}decode{Colors.END}        - Decode current signal")
         print(f"  {Colors.YELLOW}submit{Colors.END}        - Submit decoded signal for credits")
         print(f"  {Colors.YELLOW}status{Colors.END}        - Show detailed status")
+        print(f"  {Colors.YELLOW}clear{Colors.END}         - Clear terminal history")
+        
+        print(f"\n{Colors.BOLD}{Colors.CYAN}Station Management:{Colors.END}")
+        print(f"  {Colors.YELLOW}repair <sys>{Colors.END}  - Repair system (power/oxygen)")
+        print(f"  {Colors.YELLOW}rest{Colors.END}          - Rest to restore sanity")
+        print(f"  {Colors.YELLOW}inventory{Colors.END}     - Show inventory and supplies")
         
         print(f"\n{Colors.BOLD}{Colors.CYAN}Navigation:{Colors.END}")
         print(f"  {Colors.YELLOW}explore{Colors.END}       - Enter exploration mode")
+        print(f"  {Colors.YELLOW}map{Colors.END}           - Show station map")
         
         print(f"\n{Colors.BOLD}{Colors.CYAN}System:{Colors.END}")
         print(f"  {Colors.YELLOW}help{Colors.END}          - Show this help")
         print(f"  {Colors.YELLOW}exit/quit{Colors.END}     - Exit the game")
+    
+    def clear_command(self):
+        """Clear terminal history"""
+        self.terminal_history = []
+        self.clear_screen()
+        print(f"{Colors.GREEN}Terminal history cleared.{Colors.END}\n")
+    
+    def repair_command(self, args: List[str]):
+        """Repair station systems"""
+        if not args:
+            print(f"{Colors.YELLOW}Usage: repair <power|oxygen>{Colors.END}")
+            print(f"{Colors.DIM}Repair parts available: {self.resources.repair_parts}{Colors.END}")
+            return
+        
+        system = args[0].lower()
+        if system not in ['power', 'oxygen']:
+            print(f"{Colors.RED}Invalid system. Use: power or oxygen{Colors.END}")
+            return
+        
+        if self.resources.repair_parts < 1:
+            print(f"{Colors.RED}Not enough repair parts!{Colors.END}")
+            return
+        
+        self.resources.repair_parts -= 1
+        
+        if system == 'power':
+            old_power = self.resources.power
+            self.resources.power = min(100, self.resources.power + 30)
+            print(f"\n{Colors.CYAN}[REPAIRING POWER SYSTEM]{Colors.END}")
+            self.animate_loading("Repairing", 1.5)
+            print(f"{Colors.GREEN}✓ Power restored: {old_power}% → {self.resources.power}%{Colors.END}")
+        else:
+            old_oxygen = self.resources.oxygen
+            self.resources.oxygen = min(100, self.resources.oxygen + 30)
+            print(f"\n{Colors.CYAN}[REPAIRING OXYGEN SYSTEM]{Colors.END}")
+            self.animate_loading("Repairing", 1.5)
+            print(f"{Colors.GREEN}✓ Oxygen restored: {old_oxygen}% → {self.resources.oxygen}%{Colors.END}")
+    
+    def rest_command(self):
+        """Rest to restore sanity"""
+        if self.resources.water_filters < 1 or self.resources.food_cartridges < 1:
+            print(f"{Colors.RED}Not enough supplies to rest! Need: 1 water filter, 1 food cartridge{Colors.END}")
+            return
+        
+        self.resources.water_filters -= 1
+        self.resources.food_cartridges -= 1
+        
+        print(f"\n{Colors.CYAN}[RESTING]{Colors.END}")
+        self.animate_loading("Resting", 2.0)
+        
+        old_sanity = self.player.sanity
+        self.player.sanity = min(100, self.player.sanity + 20)
+        
+        print(f"{Colors.GREEN}✓ You feel more stable{Colors.END}")
+        print(f"{Colors.BLUE}Sanity restored: {old_sanity}% → {self.player.sanity}%{Colors.END}")
+        
+        self.day += 1
+        self.resources.power = max(0, self.resources.power - 5)
+        self.resources.oxygen = max(0, self.resources.oxygen - 5)
+    
+    def inventory_command(self):
+        """Show detailed inventory"""
+        self.print_box_header("INVENTORY")
+        
+        print(f"\n{Colors.BOLD}{Colors.CYAN}Currency:{Colors.END}")
+        print(f"  {Colors.YELLOW}Credits:{Colors.END} {self.player.credits}")
+        
+        print(f"\n{Colors.BOLD}{Colors.CYAN}Supplies:{Colors.END}")
+        print(f"  {Colors.BLUE}Water Filters:{Colors.END} {self.resources.water_filters}")
+        print(f"  {Colors.BLUE}Food Cartridges:{Colors.END} {self.resources.food_cartridges}")
+        print(f"  {Colors.BLUE}Repair Parts:{Colors.END} {self.resources.repair_parts}")
+        
+        print(f"\n{Colors.BOLD}{Colors.CYAN}Statistics:{Colors.END}")
+        print(f"  {Colors.BLUE}Signals Discovered:{Colors.END} {self.discovered_signals}")
+        print(f"  {Colors.BLUE}Days Survived:{Colors.END} {self.day}")
+    
+    def map_command(self):
+        """Display station map"""
+        self.print_box_header("STATION MAP")
+        
+        print(f"\n{Colors.DIM}Legend: @ = You, # = Wall, . = Floor, D = Door, T = Terminal, G = Generator, S = Storage{Colors.END}\n")
+        
+        for y, row in enumerate(self.station.layout):
+            line = ""
+            for x, tile in enumerate(row):
+                if x == self.player.x and y == self.player.y:
+                    line += Colors.YELLOW + "@" + Colors.END
+                else:
+                    tile_char = self.station.tiles[tile]
+                    if tile == 1:
+                        line += Colors.GRAY + tile_char + Colors.END
+                    elif tile == 2:
+                        line += Colors.CYAN + tile_char + Colors.END
+                    elif tile == 3:
+                        line += Colors.GREEN + tile_char + Colors.END
+                    elif tile == 4:
+                        line += Colors.RED + tile_char + Colors.END
+                    elif tile == 5:
+                        line += Colors.MAGENTA + tile_char + Colors.END
+                    else:
+                        line += Colors.DIM + tile_char + Colors.END
+            print("  " + line)
+        
+        print(f"\n{Colors.BLUE}Position:{Colors.END} ({self.player.x}, {self.player.y})")
 
     def process_command(self, cmd: str):
         parts = cmd.strip().lower().split()
@@ -648,6 +1174,16 @@ class Game:
         
         command = parts[0]
         args = parts[1:]
+        
+        # Check if at terminal for most commands
+        current_tile = self.station.get_tile(self.player.x, self.player.y)
+        terminal_only_commands = ['scan', 'analyze', 'decode', 'submit', 'status', 'repair', 'rest', 'inventory']
+        
+        if command in terminal_only_commands and current_tile != 3:
+            print(f"\n{Colors.RED}⚠ ERROR: Terminal access required{Colors.END}")
+            print(f"{Colors.YELLOW}You must be at a Terminal location to use this command.{Colors.END}")
+            print(f"{Colors.DIM}Use 'explore' to navigate to a terminal, or 'map' to see locations.{Colors.END}")
+            return
         
         if command in ['exit', 'quit']:
             self.running = False
@@ -663,9 +1199,24 @@ class Game:
             self.submit_command()
         elif command == 'status':
             self.status_command()
+        elif command == 'clear':
+            self.clear_command()
+        elif command == 'repair':
+            self.repair_command(args)
+        elif command == 'rest':
+            self.rest_command()
+        elif command == 'inventory':
+            self.inventory_command()
+        elif command == 'map':
+            self.map_command()
         elif command == 'explore':
-            self.explore_command()
-            if self.player.current_mode == GameMode.EXPLORATION:
+            # Exploration can be accessed from anywhere
+            if self.player.current_mode == GameMode.TERMINAL:
+                print(f"\n{Colors.CYAN}[ENTERING EXPLORATION MODE]{Colors.END}")
+                print(f"{Colors.DIM}Navigate to terminals to access commands{Colors.END}")
+                time.sleep(1)
+                self.player.current_mode = GameMode.EXPLORATION
+                self.render_exploration()
                 self.handle_exploration_input()
         elif command == 'help':
             self.help_command()
@@ -705,7 +1256,8 @@ class Game:
         self.show_title_screen()
         
         while self.running:
-            self.clear_screen()
+            # Don't clear screen - let it scroll like Linux terminal
+            print()  # Add spacing
             self.print_status()
             
             # Check game over conditions
@@ -731,11 +1283,10 @@ class Game:
                 break
             
             print(f"\n{Colors.GREEN}TERMINAL READY{Colors.END}")
-            cmd = input(f"\n{Colors.CYAN}>{Colors.END} ").strip()
+            cmd = input(f"{Colors.CYAN}>{Colors.END} ").strip()
             
             if cmd:
                 self.process_command(cmd)
-                input(f"\n{Colors.DIM}Press Enter to continue...{Colors.END}")
                 
                 # Daily resource consumption
                 if random.random() < 0.1:
